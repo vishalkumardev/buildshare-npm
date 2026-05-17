@@ -20,6 +20,7 @@ import { isGitRepo, addToGitignore, getCurrentBranch } from '../utils/git';
 import {
   promptProjectAction,
   promptProjectName,
+  promptPackageName,
   promptBuildPaths,
   promptAddToGitignore,
   promptOverwriteConfig,
@@ -31,6 +32,7 @@ export function createInitCommand(): Command {
     .description('Initialize a BuildShare project in the current directory')
     .option('--project-id <id>', 'Use an existing project by ID')
     .option('--project-name <name>', 'Create a new project with this name')
+    .option('--package-name <name>', 'Package name for the new project')
     .option('--android-path <path>', 'Path to Android APK/AAB')
     .option('--ios-path <path>', 'Path to iOS IPA')
     .option('-y, --yes', 'Accept defaults (non-interactive)')
@@ -73,14 +75,17 @@ Examples:
           const spinner = ora('Fetching project...').start();
           const project = await projectService.getProject(options.projectId);
           spinner.succeed(`Project: ${chalk.bold(project.name)}`);
-          projectId = project.id;
+          projectId = project.appId;
           projectName = project.name;
         } else if (options.projectName) {
+          if (!options.packageName) {
+            throw new Error('--package-name is required when creating a project with --project-name');
+          }
           // Non-interactive: create new project
           const spinner = ora('Creating project...').start();
-          const project = await projectService.createProject(options.projectName);
+          const project = await projectService.createProject(options.projectName, options.packageName);
           spinner.succeed(`Project created: ${chalk.bold(project.name)}`);
-          projectId = project.id;
+          projectId = project.appId;
           projectName = project.name;
         } else {
           // Interactive: fetch and select
@@ -100,17 +105,18 @@ Examples:
 
           if (action === 'create') {
             const name = await promptProjectName();
+            const packageName = await promptPackageName();
             const createSpinner = ora('Creating project...').start();
-            const project = await projectService.createProject(name);
+            const project = await projectService.createProject(name, packageName);
             createSpinner.succeed(`Project created: ${chalk.bold(project.name)}`);
-            projectId = project.id;
+            projectId = project.appId;
             projectName = project.name;
           } else {
-            const selected = projects.find((p) => p.id === action);
+            const selected = projects.find((p) => p.appId === action);
             if (!selected) {
               throw new Error('Project not found');
             }
-            projectId = selected.id;
+            projectId = selected.appId;
             projectName = selected.name;
             logger.success(`Selected project: ${chalk.bold(projectName)}`);
           }

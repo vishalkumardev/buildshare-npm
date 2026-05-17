@@ -64,8 +64,8 @@ export const API_ENDPOINTS = {
     VALIDATE: "/auth/validate",
   },
   PROJECTS: {
-    LIST: "/projects",
-    CREATE: "/projects",
+    LIST: "/apps/list",
+    CREATE: "/apps/create",
     GET: (id: string) => `/projects/${id}`,
   },
   BUILDS: {

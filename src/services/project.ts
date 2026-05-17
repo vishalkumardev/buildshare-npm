@@ -5,33 +5,34 @@
 
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../constants';
-import { Project, ProjectListResponse, ProjectCreateResponse } from '../types';
+import { Project, AppListResponse } from '../types';
 import { logger } from '../utils/logger';
 
 class ProjectService {
   /**
    * Fetch all projects for the authenticated user
    */
-  async listProjects(): Promise<Project[]> {
-    const response = await apiClient.get<ProjectListResponse['data']>(
-      API_ENDPOINTS.PROJECTS.LIST
+  async listProjects(page: number = 1, pageSize: number = 100): Promise<Project[]> {
+    const response = await apiClient.post<AppListResponse>(
+      API_ENDPOINTS.PROJECTS.LIST,
+      { page, pageSize }
     );
 
-    logger.debug('Projects fetched', { count: response.data.projects.length });
-    return response.data.projects;
+    logger.debug('Projects fetched', { count: response.data.records.length });
+    return response.data.records;
   }
 
   /**
    * Create a new project
    */
-  async createProject(name: string): Promise<Project> {
-    const response = await apiClient.post<ProjectCreateResponse['data']>(
+  async createProject(name: string, packageName: string): Promise<Project> {
+    const response = await apiClient.post<Project>(
       API_ENDPOINTS.PROJECTS.CREATE,
-      { name }
+      { name, packageName }
     );
 
-    logger.debug('Project created', { id: response.data.project.id, name: response.data.project.name });
-    return response.data.project;
+    logger.debug('Project created', { id: response.data.appId, name: response.data.name });
+    return response.data;
   }
 
   /**

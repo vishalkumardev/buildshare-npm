@@ -70,7 +70,7 @@ export async function promptProjectAction(projects: Project[]): Promise<'create'
     new inquirer.Separator('── Existing Projects ──'),
     ...projects.map((p) => ({
       name: `📦  ${p.name}`,
-      value: p.id,
+      value: p.appId,
     })),
   ];
 
@@ -101,6 +101,24 @@ export async function promptProjectName(): Promise<string> {
     },
   ]);
   return name.trim();
+}
+
+export async function promptPackageName(): Promise<string> {
+  const { packageName } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'packageName',
+      message: 'Package name (e.g. com.example.app):',
+      validate: (input: string) => {
+        if (input.trim().length < 3) return 'Package name must be at least 3 characters';
+        if (!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+[0-9a-z_]$/i.test(input.trim())) {
+          return 'Please enter a valid package name (e.g. com.example.app)';
+        }
+        return true;
+      },
+    },
+  ]);
+  return packageName.trim();
 }
 
 export async function promptBuildPaths(): Promise<{ androidPath: string; iosPath: string }> {

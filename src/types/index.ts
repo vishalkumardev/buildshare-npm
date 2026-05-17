@@ -46,26 +46,24 @@ export interface ProjectConfig {
 }
 
 export interface Project {
-  id: string;
+  appId: string;
   name: string;
-  platform: Platform[];
+  packageName: string;
+  organizationId: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ProjectListResponse {
-  success: boolean;
-  data: {
-    projects: Project[];
-    total: number;
+  organization?: {
+    organizationId: string;
+    name: string;
   };
 }
 
-export interface ProjectCreateResponse {
-  success: boolean;
-  data: {
-    project: Project;
-  };
+export interface AppListResponse {
+  records: Project[];
+  totalPages: number;
+  currentPage: number;
+  nextPage: number | null;
+  prevPage: number | null;
 }
 
 // ─── Build / Upload ──────────────────────────────────────────────────────────

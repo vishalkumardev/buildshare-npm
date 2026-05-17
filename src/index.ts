@@ -15,6 +15,7 @@ import {
   createInitCommand,
   createUploadCommand,
   createDoctorCommand,
+  createProjectsCommand,
 } from './commands';
 import { handleError } from './utils/errors';
 
@@ -62,6 +63,7 @@ ${chalk.bold('Support:')}
   program.addCommand(createInitCommand());
   program.addCommand(createUploadCommand());
   program.addCommand(createDoctorCommand());
+  program.addCommand(createProjectsCommand());
 
   // Handle unknown commands
   program.on('command:*', (operands) => {
