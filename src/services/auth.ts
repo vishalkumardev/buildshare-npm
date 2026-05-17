@@ -3,13 +3,13 @@
  * Handles login, logout, token storage, and token validation
  */
 
-import fs from 'fs-extra';
-import jwt from 'jsonwebtoken';
-import { AUTH_FILE, CONFIG_DIR } from '../constants';
-import { AuthTokens, StoredAuth, UserProfile, AuthResponse } from '../types';
-import { encrypt, decrypt } from '../utils/crypto';
-import { AuthenticationError } from '../utils/errors';
-import { logger } from '../utils/logger';
+import fs from "fs-extra";
+import jwt from "jsonwebtoken";
+import { AUTH_FILE, CONFIG_DIR } from "../constants";
+import { AuthTokens, StoredAuth, UserProfile, AuthResponse } from "../types";
+import { encrypt, decrypt } from "../utils/crypto";
+import { AuthenticationError } from "../utils/errors";
+import { logger } from "../utils/logger";
 
 class AuthManager {
   /**
@@ -25,35 +25,37 @@ class AuthManager {
     await fs.ensureDir(CONFIG_DIR);
 
     const encryptedData = encrypt(JSON.stringify(authData));
-    await fs.writeFile(AUTH_FILE, encryptedData, 'utf-8');
+    await fs.writeFile(AUTH_FILE, encryptedData, "utf-8");
 
     // Set restrictive file permissions (owner-only read/write)
     try {
       await fs.chmod(AUTH_FILE, 0o600);
     } catch {
       // Windows doesn't support chmod the same way
-      logger.debug('Could not set file permissions (Windows)');
+      logger.debug("Could not set file permissions (Windows)");
     }
 
-    logger.debug('Auth data stored securely');
+    logger.debug("Auth data stored securely");
   }
 
   /**
    * Retrieve stored authentication data
    */
   async getStoredAuth(): Promise<StoredAuth | null> {
-    if (!await fs.pathExists(AUTH_FILE)) {
+    if (!(await fs.pathExists(AUTH_FILE))) {
       return null;
     }
 
     try {
-      const encryptedData = await fs.readFile(AUTH_FILE, 'utf-8');
+      const encryptedData = await fs.readFile(AUTH_FILE, "utf-8");
       const decrypted = decrypt(encryptedData);
       const authData: StoredAuth = JSON.parse(decrypted);
 
       return authData;
     } catch {
-      logger.debug('Failed to decrypt auth data — may have been created on a different machine');
+      logger.debug(
+        "Failed to decrypt auth data — may have been created on a different machine",
+      );
       return null;
     }
   }
@@ -64,11 +66,11 @@ class AuthManager {
   async updateTokens(tokens: AuthTokens): Promise<void> {
     const stored = await this.getStoredAuth();
     if (!stored) {
-      throw new AuthenticationError('No stored auth to update.');
+      throw new AuthenticationError("No stored auth to update.");
     }
 
     await this.storeAuth(tokens, stored.user);
-    logger.debug('Auth tokens updated');
+    logger.debug("Auth tokens updated");
   }
 
   /**
@@ -83,7 +85,7 @@ class AuthManager {
 
     // Check if token is expired
     if (this.isTokenExpired(stored.tokens)) {
-      logger.debug('Access token expired');
+      logger.debug("Access token expired");
       return false;
     }
 
@@ -98,8 +100,8 @@ class AuthManager {
 
     if (!stored) {
       throw new AuthenticationError(
-        'You are not logged in.',
-        'Run "buildshare login" to authenticate.'
+        "You are not logged in.",
+        'Run "buildshare login" to authenticate.',
       );
     }
 
@@ -107,11 +109,13 @@ class AuthManager {
     if (this.isTokenExpired(stored.tokens)) {
       // Check if refresh token is also expired
       try {
-        const decoded = jwt.decode(stored.tokens.refreshToken) as { exp?: number } | null;
+        const decoded = jwt.decode(stored.tokens.refreshToken) as {
+          exp?: number;
+        } | null;
         if (decoded?.exp && decoded.exp * 1000 < Date.now()) {
           throw new AuthenticationError(
-            'Your session has expired.',
-            'Run "buildshare login" to authenticate again.'
+            "Your session has expired.",
+            'Run "buildshare login" to authenticate again.',
           );
         }
       } catch (error) {
@@ -131,7 +135,7 @@ class AuthManager {
       await fs.remove(AUTH_FILE);
     }
 
-    logger.debug('Auth data cleared');
+    logger.debug("Auth data cleared");
   }
 
   /**
@@ -168,11 +172,14 @@ class AuthManager {
   /**
    * Login with email and password
    */
-  async loginWithCredentials(_email: string, _password: string): Promise<AuthResponse> {
+  async loginWithCredentials(
+    _email: string,
+    _password: string,
+  ): Promise<AuthResponse> {
     // This will be called from the command, which will use apiClient
     // This method exists for the interface but the actual API call happens in the command
     // to avoid circular dependencies
-    throw new Error('Use apiClient directly for login');
+    throw new Error("Use apiClient directly for login");
   }
 
   /**
@@ -182,14 +189,14 @@ class AuthManager {
     // Store a minimal auth with the API token
     const tokens: AuthTokens = {
       accessToken: token,
-      refreshToken: '',
+      refreshToken: "",
       expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
     };
 
     const user: UserProfile = {
-      id: 'api-token-user',
-      email: 'api-token@buildshare.io',
-      name: 'API Token',
+      id: "api-token-user",
+      email: "api-token@buildshare.io",
+      name: "API Token",
     };
 
     await this.storeAuth(tokens, user);
