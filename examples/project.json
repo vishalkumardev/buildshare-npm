@@ -1,0 +1,7 @@
+{
+  "projectId": "proj_abc123xyz",
+  "projectName": "My Awesome App",
+  "androidPath": "./app/build/outputs/apk/release/app-release.apk",
+  "iosPath": "./build/ios/MyApp.ipa",
+  "defaultBranch": "main"
+}
