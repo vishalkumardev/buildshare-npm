@@ -96,12 +96,27 @@ async function handleCredentialLogin(email: string, password: string): Promise<v
   }).start();
 
   try {
-    const response = await apiClient.post<AuthResponse['data']>(
+    const response = await apiClient.post<AuthResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
       { email, password }
     );
 
-    const { tokens, user } = response.data;
+    const authData = response.data;
+
+    // Map backend login payload to the local credentials structure stored by CLI
+    const tokens = {
+      accessToken: authData.token,
+      refreshToken: "",
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+    };
+
+    const user = {
+      id: String(authData.userId),
+      name: authData.name,
+      email: authData.email,
+      organization: 'Personal',
+    };
+
     await authManager.storeAuth(tokens, user);
 
     spinner.succeed(chalk.green('Authentication successful!'));
@@ -110,7 +125,7 @@ async function handleCredentialLogin(email: string, password: string): Promise<v
     logger.box('Welcome to BuildShare!', {
       'User': user.name,
       'Email': user.email,
-      'Organization': user.organization || 'Personal',
+      'Organization': user.organization,
     });
 
     logger.info(`Run ${chalk.cyan('buildshare init')} to set up a project.`);

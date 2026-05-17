@@ -16,11 +16,10 @@ export interface AuthTokens {
 }
 
 export interface AuthResponse {
-  success: boolean;
-  data: {
-    tokens: AuthTokens;
-    user: UserProfile;
-  };
+  token: string;
+  userId: number;
+  name: string;
+  email: string;
 }
 
 export interface UserProfile {
