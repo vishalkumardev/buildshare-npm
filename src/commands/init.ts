@@ -3,20 +3,20 @@
  * Initialize a BuildShare project in the current directory
  */
 
-import { Command } from 'commander';
-import ora from 'ora';
-import chalk from 'chalk';
-import path from 'path';
-import fs from 'fs-extra';
-import { configManager } from '../config';
-import { apiClient } from '../api/client';
-import { authManager } from '../services/auth';
-import { projectService } from '../services/project';
-import { ProjectConfig } from '../types';
-import { PROJECT_DIR } from '../constants';
-import { handleError } from '../utils/errors';
-import { logger } from '../utils/logger';
-import { isGitRepo, addToGitignore, getCurrentBranch } from '../utils/git';
+import { Command } from "commander";
+import ora from "ora";
+import chalk from "chalk";
+import path from "path";
+import fs from "fs-extra";
+import { configManager } from "../config";
+import { apiClient } from "../api/client";
+import { authManager } from "../services/auth";
+import { projectService } from "../services/project";
+import { ProjectConfig } from "../types";
+import { PROJECT_DIR } from "../constants";
+import { handleError } from "../utils/errors";
+import { logger } from "../utils/logger";
+import { isGitRepo, addToGitignore, getCurrentBranch } from "../utils/git";
 import {
   promptProjectAction,
   promptProjectName,
@@ -24,27 +24,26 @@ import {
   promptBuildPaths,
   promptAddToGitignore,
   promptOverwriteConfig,
-  promptDefaultBranch,
-} from '../prompts';
+} from "../prompts";
 
 export function createInitCommand(): Command {
-  const command = new Command('init')
-    .description('Initialize a BuildShare project in the current directory')
-    .option('--project-id <id>', 'Use an existing project by ID')
-    .option('--project-name <name>', 'Create a new project with this name')
-    .option('--package-name <name>', 'Package name for the new project')
-    .option('--android-path <path>', 'Path to Android APK/AAB')
-    .option('--ios-path <path>', 'Path to iOS IPA')
-    .option('-y, --yes', 'Accept defaults (non-interactive)')
+  const command = new Command("init")
+    .description("Initialize a BuildShare project in the current directory")
+    .option("--project-id <id>", "Use an existing project by ID")
+    .option("--project-name <name>", "Create a new project with this name")
+    .option("--package-name <name>", "Package name for the new project")
+    .option("--android-path <path>", "Path to Android APK/AAB")
+    .option("--ios-path <path>", "Path to iOS IPA")
+    .option("-y, --yes", "Accept defaults (non-interactive)")
     .addHelpText(
-      'after',
+      "after",
       `
 Examples:
   $ buildshare init                                    # Interactive setup
   $ buildshare init --project-name "My App"            # Create new project
   $ buildshare init --project-id abc123                # Use existing project
   $ buildshare init --android-path ./app/build/app.apk # Set Android path
-    `
+    `,
     )
     .action(async (options) => {
       try {
@@ -53,14 +52,16 @@ Examples:
         await authManager.requireAuth();
 
         logger.newline();
-        logger.info(`Initializing BuildShare project in ${chalk.cyan(process.cwd())}`);
+        logger.info(
+          `Initializing BuildShare project in ${chalk.cyan(process.cwd())}`,
+        );
         logger.divider();
 
         // Check if already initialized
         if (configManager.isProjectInitialized() && !options.yes) {
           const overwrite = await promptOverwriteConfig();
           if (!overwrite) {
-            logger.info('Initialization cancelled.');
+            logger.info("Initialization cancelled.");
             return;
           }
         }
@@ -72,49 +73,59 @@ Examples:
 
         if (options.projectId) {
           // Non-interactive: use provided project ID
-          const spinner = ora('Fetching project...').start();
+          const spinner = ora("Fetching project...").start();
           const project = await projectService.getProject(options.projectId);
           spinner.succeed(`Project: ${chalk.bold(project.name)}`);
           projectId = project.appId;
           projectName = project.name;
         } else if (options.projectName) {
           if (!options.packageName) {
-            throw new Error('--package-name is required when creating a project with --project-name');
+            throw new Error(
+              "--package-name is required when creating a project with --project-name",
+            );
           }
           // Non-interactive: create new project
-          const spinner = ora('Creating project...').start();
-          const project = await projectService.createProject(options.projectName, options.packageName);
+          const spinner = ora("Creating project...").start();
+          const project = await projectService.createProject(
+            options.projectName,
+            options.packageName,
+          );
           spinner.succeed(`Project created: ${chalk.bold(project.name)}`);
           projectId = project.appId;
           projectName = project.name;
         } else {
           // Interactive: fetch and select
-          const spinner = ora('Fetching your projects...').start();
+          const spinner = ora("Fetching your projects...").start();
 
-          let projects: import('../types').Project[] = [];
+          let projects: import("../types").Project[] = [];
           try {
             projects = await projectService.listProjects();
             spinner.succeed(`Found ${projects.length} project(s)`);
           } catch {
-            spinner.warn('Could not fetch projects. You can create a new one.');
+            spinner.warn("Could not fetch projects. You can create a new one.");
             projects = [];
           }
 
           logger.newline();
           const action = await promptProjectAction(projects);
 
-          if (action === 'create') {
+          if (action === "create") {
             const name = await promptProjectName();
             const packageName = await promptPackageName();
-            const createSpinner = ora('Creating project...').start();
-            const project = await projectService.createProject(name, packageName);
-            createSpinner.succeed(`Project created: ${chalk.bold(project.name)}`);
+            const createSpinner = ora("Creating project...").start();
+            const project = await projectService.createProject(
+              name,
+              packageName,
+            );
+            createSpinner.succeed(
+              `Project created: ${chalk.bold(project.name)}`,
+            );
             projectId = project.appId;
             projectName = project.name;
           } else {
             const selected = projects.find((p) => p.appId === action);
             if (!selected) {
-              throw new Error('Project not found');
+              throw new Error("Project not found");
             }
             projectId = selected.appId;
             projectName = selected.name;
@@ -125,10 +136,10 @@ Examples:
         // ─── Step 2: Configure build paths ─────────────────────────────
 
         logger.newline();
-        logger.info('Configure build file paths:');
+        logger.info("Configure build file paths:");
 
-        let androidPath = options.androidPath || '';
-        let iosPath = options.iosPath || '';
+        let androidPath = options.androidPath || "";
+        let iosPath = options.iosPath || "";
 
         if (!options.yes && !options.androidPath && !options.iosPath) {
           const paths = await promptBuildPaths();
@@ -140,31 +151,31 @@ Examples:
         if (androidPath) {
           const resolved = path.resolve(process.cwd(), androidPath);
           if (!fs.existsSync(resolved)) {
-            logger.warn(`Android path does not exist yet: ${chalk.yellow(androidPath)}`);
-            logger.info('You can update it later in .buildshare/project.json');
+            logger.warn(
+              `Android path does not exist yet: ${chalk.yellow(androidPath)}`,
+            );
+            logger.info("You can update it later in .buildshare/project.json");
           }
         }
 
         if (iosPath) {
           const resolved = path.resolve(process.cwd(), iosPath);
           if (!fs.existsSync(resolved)) {
-            logger.warn(`iOS path does not exist yet: ${chalk.yellow(iosPath)}`);
-            logger.info('You can update it later in .buildshare/project.json');
+            logger.warn(
+              `iOS path does not exist yet: ${chalk.yellow(iosPath)}`,
+            );
+            logger.info("You can update it later in .buildshare/project.json");
           }
         }
 
         // ─── Step 3: Default branch ────────────────────────────────────
 
-        let defaultBranch = 'main';
+        let defaultBranch = "main";
         if (isGitRepo()) {
           const currentBranch = getCurrentBranch();
           if (currentBranch) {
             defaultBranch = currentBranch;
           }
-        }
-
-        if (!options.yes) {
-          defaultBranch = await promptDefaultBranch();
         }
 
         // ─── Step 4: Write config ──────────────────────────────────────
@@ -177,9 +188,9 @@ Examples:
           defaultBranch,
         };
 
-        const writeSpinner = ora('Writing project configuration...').start();
+        const writeSpinner = ora("Writing project configuration...").start();
         await configManager.writeProjectConfig(config);
-        writeSpinner.succeed('Project configuration saved');
+        writeSpinner.succeed("Project configuration saved");
 
         // ─── Step 5: Git integration ───────────────────────────────────
 
@@ -188,9 +199,9 @@ Examples:
           if (shouldAddGitignore) {
             const added = addToGitignore(PROJECT_DIR);
             if (added) {
-              logger.success('.buildshare added to .gitignore');
+              logger.success(".buildshare added to .gitignore");
             } else {
-              logger.info('.buildshare already in .gitignore');
+              logger.info(".buildshare already in .gitignore");
             }
           }
         } else if (isGitRepo() && options.yes) {
@@ -201,19 +212,27 @@ Examples:
 
         logger.newline();
         logger.divider();
-        logger.box('Project Initialized', {
-          'Project': projectName,
-          'ID': projectId,
-          'Android': androidPath || '(not set)',
-          'iOS': iosPath || '(not set)',
-          'Branch': defaultBranch,
-          'Config': `./${PROJECT_DIR}/project.json`,
+        logger.box("Project Initialized", {
+          Project: projectName,
+          ID: projectId,
+          Android: androidPath || "(not set)",
+          iOS: iosPath || "(not set)",
+          Branch: defaultBranch,
+          Config: `./${PROJECT_DIR}/project.json`,
         });
 
-        logger.info('Next steps:');
-        logger.step(1, 3, `Upload Android: ${chalk.cyan('buildshare upload android')}`);
-        logger.step(2, 3, `Upload iOS:     ${chalk.cyan('buildshare upload ios')}`);
-        logger.step(3, 3, `Check config:   ${chalk.cyan('buildshare doctor')}`);
+        logger.info("Next steps:");
+        logger.step(
+          1,
+          3,
+          `Upload Android: ${chalk.cyan("buildshare upload android")}`,
+        );
+        logger.step(
+          2,
+          3,
+          `Upload iOS:     ${chalk.cyan("buildshare upload ios")}`,
+        );
+        logger.step(3, 3, `Check config:   ${chalk.cyan("buildshare doctor")}`);
         logger.newline();
       } catch (error) {
         handleError(error);

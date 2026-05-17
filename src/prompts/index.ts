@@ -254,14 +254,3 @@ export async function promptSelectBuildFile(files: string[]): Promise<string> {
   return file;
 }
 
-export async function promptDefaultBranch(): Promise<string> {
-  const { branch } = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'branch',
-      message: 'Default branch:',
-      default: 'main',
-    },
-  ]);
-  return branch.trim();
-}
