@@ -73,74 +73,13 @@ export enum Platform {
   IOS = 'ios',
 }
 
-export enum ReleaseType {
-  DEVELOPMENT = 'development',
-  STAGING = 'staging',
-  PRODUCTION = 'production',
-}
-
 export enum FileType {
   APK = 'apk',
   AAB = 'aab',
   IPA = 'ipa',
 }
 
-export interface UploadInitiateRequest {
-  projectId: string;
-  platform: Platform;
-  fileType: FileType;
-  fileName: string;
-  fileSize: number;
-  checksum: string;
-  changelog: string;
-  releaseType: ReleaseType;
-  branch?: string;
-  commitHash?: string;
-  metadata?: Record<string, string>;
-}
 
-export interface UploadInitiateResponse {
-  success: boolean;
-  data: {
-    uploadId: string;
-    chunkSize: number;
-    totalChunks: number;
-    uploadUrls?: string[];
-  };
-}
-
-export interface ChunkUploadRequest {
-  uploadId: string;
-  chunkIndex: number;
-  totalChunks: number;
-  checksum: string;
-}
-
-export interface ChunkUploadResponse {
-  success: boolean;
-  data: {
-    chunkIndex: number;
-    received: boolean;
-  };
-}
-
-export interface UploadCompleteRequest {
-  uploadId: string;
-  checksums: string[];
-  totalChunks: number;
-}
-
-export interface UploadCompleteResponse {
-  success: boolean;
-  data: {
-    buildId: string;
-    version: string;
-    downloadUrl: string;
-    installUrl: string;
-    qrCodeUrl: string;
-    manifestUrl?: string;
-  };
-}
 
 // ─── Upload Engine ───────────────────────────────────────────────────────────
 
@@ -189,9 +128,6 @@ export interface UploadState {
   filePath: string;
   fileSize: number;
   fileChecksum: string;
-  chunks: ChunkInfo[];
-  completedChunks: number[];
-  config: UploadConfig;
   startedAt: number;
   lastActivity: number;
 }

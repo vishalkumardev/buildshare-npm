@@ -11,20 +11,22 @@ import { configManager } from '../config';
 import { apiClient } from '../api/client';
 import { authManager } from '../services/auth';
 import { createUploadEngine, UploadResult } from '../uploader';
-import { Platform, FileType, ReleaseType } from '../types';
+import { Platform, FileType } from '../types';
+import { ANDROID_EXTENSIONS, IOS_EXTENSIONS } from '../constants';
 import { handleError, ValidationError } from '../utils/errors';
 import { logger } from '../utils/logger';
-import { validateFileSize, validateAndroidFile, validateIosFile, detectFileType, formatBytes, formatDuration } from '../utils/file';
+import { validateFileSize, validateAndroidFile, validateIosFile, detectFileType, formatBytes, formatDuration, findBuildFiles } from '../utils/file';
 import { getCurrentBranch, getCommitHash, getLatestCommitMessage } from '../utils/git';
-import { promptChangelogInline, promptReleaseType, promptConfirmUpload } from '../prompts';
+import { promptChangelogInline, promptConfirmUpload, promptVersionName, promptVersionCode, promptSelectBuildFile } from '../prompts';
 
 interface UploadCmdOpts {
   file?: string;
   changelog?: string;
-  release?: string;
   branch?: string;
   commit?: string;
   confirm?: boolean;
+  versionName?: string;
+  versionCode?: string;
 }
 
 export function createUploadCommand(): Command {
@@ -33,18 +35,20 @@ export function createUploadCommand(): Command {
   cmd.command('android').description('Upload Android APK/AAB')
     .option('-f, --file <path>', 'Path to APK/AAB')
     .option('-c, --changelog <msg>', 'Changelog')
-    .option('-r, --release <type>', 'Release type')
     .option('--branch <branch>', 'Git branch')
     .option('--commit <hash>', 'Git commit')
+    .option('--version-name <name>', 'Version name (e.g. 1.0.0)')
+    .option('--version-code <code>', 'Version code (e.g. 1)')
     .option('--no-confirm', 'Skip confirmation')
     .action(async (opts) => { try { await performUpload(Platform.ANDROID, opts); } catch (e) { handleError(e); } });
 
   cmd.command('ios').description('Upload iOS IPA')
     .option('-f, --file <path>', 'Path to IPA')
     .option('-c, --changelog <msg>', 'Changelog')
-    .option('-r, --release <type>', 'Release type')
     .option('--branch <branch>', 'Git branch')
     .option('--commit <hash>', 'Git commit')
+    .option('--version-name <name>', 'Version name (e.g. 1.0.0)')
+    .option('--version-code <code>', 'Version code (e.g. 1)')
     .option('--no-confirm', 'Skip confirmation')
     .action(async (opts) => { try { await performUpload(Platform.IOS, opts); } catch (e) { handleError(e); } });
 
@@ -66,6 +70,22 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   if (!filePath) throw new ValidationError(`No ${platform} build path configured.`, [{ message: `Set path in .buildshare/project.json or use --file` }]);
 
   const spinner = ora('Validating build file...').start();
+  
+  if (require('fs-extra').existsSync(filePath) && require('fs-extra').statSync(filePath).isDirectory()) {
+    const exts = platform === Platform.ANDROID ? ANDROID_EXTENSIONS : IOS_EXTENSIONS;
+    const files = findBuildFiles(filePath, exts);
+    if (files.length === 0) {
+      spinner.fail('Validation failed');
+      throw new ValidationError(`No ${platform} build files (${exts.join(', ')}) found in directory: ${filePath}`);
+    } else if (files.length === 1) {
+      filePath = files[0];
+    } else {
+      spinner.stop();
+      filePath = await promptSelectBuildFile(files);
+      spinner.start('Validating build file...');
+    }
+  }
+
   const resolved = platform === Platform.ANDROID ? validateAndroidFile(filePath) : validateIosFile(filePath);
   const fileSize = validateFileSize(resolved);
   const fileType = detectFileType(resolved) as FileType;
@@ -75,21 +95,17 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   // Changelog
   let changelog = options.changelog || (configManager.isCI() ? (getLatestCommitMessage() || 'Automated build') : await promptChangelogInline());
 
-  // Release type
-  let releaseType: ReleaseType;
-  if (options.release) {
-    if (!['development', 'staging', 'production'].includes(options.release)) throw new ValidationError(`Invalid release type: ${options.release}`);
-    releaseType = options.release as ReleaseType;
-  } else { releaseType = configManager.isCI() ? ReleaseType.DEVELOPMENT : await promptReleaseType(); }
-
   const branch = options.branch || getCurrentBranch() || projectConfig.defaultBranch;
   const commitHash = options.commit || getCommitHash() || undefined;
+
+  const versionName = options.versionName || await promptVersionName();
+  const versionCode = options.versionCode || await promptVersionCode();
 
   // Confirm
   if (options.confirm !== false && !configManager.isCI()) {
     logger.newline();
-    logger.table({ File: fileName, Size: formatBytes(fileSize), Type: fileType.toUpperCase(), Release: releaseType, Branch: branch, Commit: commitHash || 'N/A' });
-    if (!(await promptConfirmUpload(fileName, formatBytes(fileSize), releaseType))) { logger.info('Upload cancelled.'); return; }
+    logger.table({ File: fileName, Size: formatBytes(fileSize), Type: fileType.toUpperCase(), Branch: branch, Commit: commitHash || 'N/A' });
+    if (!(await promptConfirmUpload(fileName, formatBytes(fileSize)))) { logger.info('Upload cancelled.'); return; }
   }
 
   // Upload with progress
@@ -106,21 +122,21 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   bar.start(100, 0, { speed: '0 B/s', eta_f: 'calculating...', chunks: '0/0' });
 
   try {
-    const result = await engine.upload({ filePath: resolved, projectId: projectConfig.projectId, platform, fileType, changelog, releaseType, branch, commitHash });
+    const result = await engine.upload({ filePath: resolved, projectId: projectConfig.projectId, platform, fileType, changelog, branch, commitHash, versionName, versionCode });
     bar.update(100, { speed: 'Done', eta_f: '0s', chunks: 'complete' });
     bar.stop();
-    displayResult(result, platform);
+    displayResult(result);
   } catch (e) { bar.stop(); throw e; }
 }
 
-function displayResult(result: UploadResult, platform: Platform): void {
+function displayResult(result: UploadResult): void {
   logger.newline();
   logger.success('Build uploaded successfully! 🎉');
-  const data: Record<string, string> = { 'Build ID': result.buildId, Version: result.version, 'Download URL': result.downloadUrl, 'Install URL': result.installUrl, 'QR Code': result.qrCodeUrl };
-  if (platform === Platform.IOS && result.manifestUrl) data['Manifest URL'] = result.manifestUrl;
+  const data: Record<string, string> = { 
+    'Version ID': result.versionId, 
+    'Version': `${result.versionName} (${result.versionCode})`, 
+    'APK Path': result.apkUrl 
+  };
   logger.box('Upload Complete', data);
-  try { const qr = require('qrcode-terminal'); logger.info('Scan QR code to install:'); logger.newline(); qr.generate(result.installUrl, { small: true }, (q: string) => { console.log(q); }); } catch { /* no-op */ }
-  logger.newline();
-  logger.info(`Share: ${chalk.underline.cyan(result.installUrl)}`);
   logger.newline();
 }

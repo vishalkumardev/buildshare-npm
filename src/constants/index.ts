@@ -69,9 +69,7 @@ export const API_ENDPOINTS = {
     GET: (id: string) => `/projects/${id}`,
   },
   BUILDS: {
-    UPLOAD_INITIATE: "/builds/upload/initiate",
-    UPLOAD_CHUNK: "/builds/upload/chunk",
-    UPLOAD_COMPLETE: "/builds/upload/complete",
+    UPLOAD: (appId: string) => `/app-versions/${appId}/upload`,
   },
 } as const;
 
@@ -123,13 +121,7 @@ export const SPINNER_FRAMES = [
   "⠏",
 ];
 
-// ─── Release Types ───────────────────────────────────────────────────────────
 
-export const RELEASE_TYPES = [
-  { name: "🔧  Development", value: "development" },
-  { name: "🧪  Staging", value: "staging" },
-  { name: "🚀  Production", value: "production" },
-] as const;
 
 // ─── Exit Codes ──────────────────────────────────────────────────────────────
 

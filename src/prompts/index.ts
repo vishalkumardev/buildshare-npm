@@ -4,8 +4,8 @@
  */
 
 import inquirer from 'inquirer';
-import { Project, ReleaseType } from '../types';
-import { RELEASE_TYPES } from '../constants';
+import { Project } from '../types';
+
 
 // ─── Authentication Prompts ──────────────────────────────────────────────────
 
@@ -182,20 +182,35 @@ export async function promptChangelogInline(): Promise<string> {
   return changelog.trim();
 }
 
-export async function promptReleaseType(): Promise<ReleaseType> {
-  const { releaseType } = await inquirer.prompt([
+export async function promptVersionName(): Promise<string> {
+  const { versionName } = await inquirer.prompt([
     {
-      type: 'list',
-      name: 'releaseType',
-      message: 'Release type:',
-      choices: RELEASE_TYPES.map((rt) => ({
-        name: rt.name,
-        value: rt.value,
-      })),
+      type: 'input',
+      name: 'versionName',
+      message: 'Version Name (e.g. 1.0.0):',
+      default: '1.0.0',
+      validate: (input: string) => input.trim().length > 0 || 'Version Name is required',
     },
   ]);
-  return releaseType as ReleaseType;
+  return versionName.trim();
 }
+
+export async function promptVersionCode(): Promise<string> {
+  const { versionCode } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'versionCode',
+      message: 'Version Code (e.g. 1):',
+      default: '1',
+      validate: (input: string) => {
+        if (!/^\d+$/.test(input.trim())) return 'Version Code must be a number';
+        return true;
+      },
+    },
+  ]);
+  return versionCode.trim();
+}
+
 
 export async function promptOverwriteConfig(): Promise<boolean> {
   const { overwrite } = await inquirer.prompt([
@@ -211,14 +226,13 @@ export async function promptOverwriteConfig(): Promise<boolean> {
 
 export async function promptConfirmUpload(
   fileName: string,
-  fileSize: string,
-  releaseType: string
+  fileSize: string
 ): Promise<boolean> {
   const { confirm } = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'confirm',
-      message: `Upload ${fileName} (${fileSize}) as ${releaseType}?`,
+      message: `Upload ${fileName} (${fileSize})?`,
       default: true,
     },
   ]);
