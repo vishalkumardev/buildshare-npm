@@ -143,10 +143,40 @@ async function handleTokenLogin(token: string): Promise<void> {
 
   try {
     // Validate the token with the server
-    await authManager.loginWithToken(token);
+    const response = await apiClient.post<{
+      accessToken: string;
+      user: { userId: number; name: string; email: string };
+    }>(
+      API_ENDPOINTS.AUTH.VERIFY_API_KEY,
+      { apiKey: token }
+    );
+
+    const authData = response.data;
+
+    const tokens = {
+      accessToken: authData.accessToken,
+      refreshToken: "",
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+    };
+
+    const userProfile = {
+      id: authData.user?.userId ? String(authData.user.userId) : "api-token-user",
+      name: authData.user?.name || "API Token User",
+      email: authData.user?.email || "api-token@buildshare.io",
+      organization: "Personal",
+    };
+
+    await authManager.storeAuth(tokens, userProfile);
 
     spinner.succeed(chalk.green('API token stored successfully!'));
     logger.newline();
+    
+    logger.box('Welcome to BuildShare!', {
+      'User': userProfile.name,
+      'Email': userProfile.email,
+      'Organization': userProfile.organization,
+    });
+    
     logger.info('You are now authenticated via API token.');
     logger.info(`Run ${chalk.cyan('buildshare init')} to set up a project.`);
   } catch (error) {

@@ -1,6 +1,6 @@
 {
   "name": "buildshare",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Production-grade cross-platform CLI for BuildShare — distribute Android APK/AAB and iOS IPA builds effortlessly.",
   "main": "dist/index.js",
   "bin": {
@@ -30,6 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.7.9",
+    "buildshare": "file:buildshare-1.0.5.tgz",
     "chalk": "^4.1.2",
     "cli-progress": "^3.12.0",
     "commander": "^12.1.0",

@@ -81,7 +81,7 @@ export class UploadEngine extends EventEmitter {
    * Upload a file with single request strategy
    */
   async upload(options: UploadOptions): Promise<UploadResult> {
-    const { filePath, projectId, platform, fileType, changelog, versionName, versionCode } = options;
+    const { filePath, projectId, platform, fileType, changelog, } = options;
 
     this.isCancelled = false;
     this.startTime = Date.now();
@@ -90,20 +90,14 @@ export class UploadEngine extends EventEmitter {
     this.totalBytes = fileStats.size;
     this.uploadedBytes = 0;
 
-    const fd = await fs.open(filePath, 'r');
-    const buffer = Buffer.alloc(fileStats.size);
-    await fs.read(fd, buffer, 0, fileStats.size, 0);
-    await fs.close(fd);
-
     const formData = new FormData();
-    formData.append('versionName', versionName || '1.0.0');
-    formData.append('versionCode', versionCode || '1');
     formData.append('changelog', changelog || '');
 
     const fileKey = fileType === 'apk' || fileType === 'aab' ? 'apk' : (fileType === 'ipa' ? 'ipa' : 'file');
-    formData.append(fileKey, buffer, {
+    formData.append(fileKey, fs.createReadStream(filePath), {
       filename: path.basename(filePath),
       contentType: platform === 'android' ? 'application/vnd.android.package-archive' : 'application/octet-stream',
+      knownLength: fileStats.size,
     });
 
     const headers = formData.getHeaders ? formData.getHeaders() : { 'Content-Type': 'multipart/form-data' };
@@ -125,7 +119,6 @@ export class UploadEngine extends EventEmitter {
       );
 
       this.activeUploads.delete(0);
-
       if (this.isCancelled) {
         throw new UploadError('Upload was cancelled', '');
       }
@@ -162,6 +155,12 @@ export class UploadEngine extends EventEmitter {
   private emitProgress(): void {
     const elapsed = (Date.now() - this.startTime) / 1000;
     const speed = elapsed > 0 ? this.uploadedBytes / elapsed : 0;
+    
+    let percentage = this.totalBytes > 0 ? (this.uploadedBytes / this.totalBytes) * 100 : 0;
+    if (percentage > 99) {
+      percentage = 99; // Cap at 99% until server fully processes the request
+    }
+
     const remaining = this.totalBytes - this.uploadedBytes;
     const eta = speed > 0 ? remaining / speed : 0;
 
@@ -169,7 +168,7 @@ export class UploadEngine extends EventEmitter {
       uploadId: '',
       totalBytes: this.totalBytes,
       uploadedBytes: this.uploadedBytes,
-      percentage: Math.min((this.uploadedBytes / this.totalBytes) * 100, 100),
+      percentage,
       speed,
       eta,
       currentChunk: 1,

@@ -17,7 +17,7 @@ import { handleError, ValidationError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { validateFileSize, validateAndroidFile, validateIosFile, detectFileType, formatBytes, formatDuration, findBuildFiles } from '../utils/file';
 import { getCurrentBranch, getCommitHash, getLatestCommitMessage } from '../utils/git';
-import { promptChangelogInline, promptConfirmUpload, promptVersionName, promptVersionCode, promptSelectBuildFile } from '../prompts';
+import { promptChangelogInline, promptConfirmUpload, promptSelectBuildFile } from '../prompts';
 
 interface UploadCmdOpts {
   file?: string;
@@ -37,8 +37,6 @@ export function createUploadCommand(): Command {
     .option('-c, --changelog <msg>', 'Changelog')
     .option('--branch <branch>', 'Git branch')
     .option('--commit <hash>', 'Git commit')
-    .option('--version-name <name>', 'Version name (e.g. 1.0.0)')
-    .option('--version-code <code>', 'Version code (e.g. 1)')
     .option('--no-confirm', 'Skip confirmation')
     .action(async (opts) => { try { await performUpload(Platform.ANDROID, opts); } catch (e) { handleError(e); } });
 
@@ -47,8 +45,6 @@ export function createUploadCommand(): Command {
     .option('-c, --changelog <msg>', 'Changelog')
     .option('--branch <branch>', 'Git branch')
     .option('--commit <hash>', 'Git commit')
-    .option('--version-name <name>', 'Version name (e.g. 1.0.0)')
-    .option('--version-code <code>', 'Version code (e.g. 1)')
     .option('--no-confirm', 'Skip confirmation')
     .action(async (opts) => { try { await performUpload(Platform.IOS, opts); } catch (e) { handleError(e); } });
 
@@ -70,7 +66,7 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   if (!filePath) throw new ValidationError(`No ${platform} build path configured.`, [{ message: `Set path in .buildshare/project.json or use --file` }]);
 
   const spinner = ora('Validating build file...').start();
-  
+
   if (require('fs-extra').existsSync(filePath) && require('fs-extra').statSync(filePath).isDirectory()) {
     const exts = platform === Platform.ANDROID ? ANDROID_EXTENSIONS : IOS_EXTENSIONS;
     const files = findBuildFiles(filePath, exts);
@@ -98,8 +94,8 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   const branch = options.branch || getCurrentBranch() || projectConfig.defaultBranch;
   const commitHash = options.commit || getCommitHash() || undefined;
 
-  const versionName = options.versionName || await promptVersionName();
-  const versionCode = options.versionCode || await promptVersionCode();
+  const versionName = options.versionName;
+  const versionCode = options.versionCode;
 
   // Confirm
   if (options.confirm !== false && !configManager.isCI()) {
@@ -116,7 +112,14 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
   }, cliProgress.Presets.shades_classic);
 
   const engine = createUploadEngine();
-  engine.on('progress', (p) => { bar.update(p.percentage, { speed: `${formatBytes(p.speed)}/s`, eta_f: formatDuration(p.eta), chunks: `${p.currentChunk}/${p.totalChunks}` }); });
+  engine.on('progress', (p) => { 
+    const isProcessing = p.percentage === 99;
+    bar.update(p.percentage, { 
+      speed: isProcessing ? 'Processing...' : `${formatBytes(p.speed)}/s`, 
+      eta_f: isProcessing ? '--' : formatDuration(p.eta), 
+      chunks: `${p.currentChunk}/${p.totalChunks}` 
+    }); 
+  });
   engine.on('chunk_retry', ({ index, attempt, maxRetries }) => { logger.warn(`Retrying chunk ${index + 1} (${attempt}/${maxRetries})`); });
 
   bar.start(100, 0, { speed: '0 B/s', eta_f: 'calculating...', chunks: '0/0' });
@@ -132,10 +135,10 @@ async function performUpload(platform: Platform, options: UploadCmdOpts): Promis
 function displayResult(result: UploadResult): void {
   logger.newline();
   logger.success('Build uploaded successfully! 🎉');
-  const data: Record<string, string> = { 
-    'Version ID': result.versionId, 
-    'Version': `${result.versionName} (${result.versionCode})`, 
-    'APK Path': result.apkUrl 
+  const data: Record<string, string> = {
+    'Version ID': result.versionId,
+    'Version': `${result.versionName} (${result.versionCode})`,
+    'APK Path': result.apkUrl
   };
   logger.box('Upload Complete', data);
   logger.newline();

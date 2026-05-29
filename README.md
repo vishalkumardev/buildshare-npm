@@ -167,62 +167,7 @@ buildshare --version     # Show version
 buildshare --help        # Show help
 ```
 
----
 
-## 🏗️ Architecture
-
-```
-src/
-├── index.ts              # CLI entry point
-├── commands/             # Command implementations
-│   ├── login.ts
-│   ├── logout.ts
-│   ├── init.ts
-│   ├── upload.ts
-│   └── doctor.ts
-├── services/             # Business logic layer
-│   ├── auth.ts
-│   └── project.ts
-├── api/                  # HTTP client
-│   └── client.ts
-├── uploader/             # Upload engine
-│   └── engine.ts
-├── config/               # Configuration management
-│   └── index.ts
-├── prompts/              # Interactive prompts
-│   └── index.ts
-├── utils/                # Shared utilities
-│   ├── logger.ts
-│   ├── errors.ts
-│   ├── crypto.ts
-│   ├── git.ts
-│   └── file.ts
-├── types/                # TypeScript types
-│   ├── index.ts
-│   └── validation.ts
-└── constants/            # App constants
-    └── index.ts
-```
-
-### Design Principles
-- **Service layer abstraction** — No business logic in commands
-- **Strong typing** — Full TypeScript with strict mode
-- **Modular architecture** — Each module has a single responsibility
-- **Dependency injection friendly** — Singleton services with clear interfaces
-- **Reusable upload engine** — Event-driven with pause/resume/cancel
-
----
-
-## 🔒 Security
-
-- AES-256-GCM encrypted token storage
-- Machine-specific key derivation (PBKDF2)
-- File permission hardening (0600)
-- Path traversal prevention
-- JWT expiry validation
-- TLS-only API communication
-
----
 
 ## 🤖 CI/CD Integration
 
