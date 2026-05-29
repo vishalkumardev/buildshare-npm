@@ -51,8 +51,7 @@ export const UPLOAD_STATE_DIR = ".uploads";
 
 // ─── API Defaults ────────────────────────────────────────────────────────────
 
-// export const DEFAULT_API_URL = "https://api.buildshare.in/api";
-export const DEFAULT_API_URL = "http://localhost:8100/api";
+export const DEFAULT_API_URL = "https://api.buildshare.in/api";
 export const DEFAULT_API_VERSION = "v1";
 export const API_TIMEOUT = 30000; // 30 seconds
 
