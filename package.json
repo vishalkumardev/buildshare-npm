@@ -1,6 +1,6 @@
 {
   "name": "buildshare",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Production-grade cross-platform CLI for BuildShare — distribute Android APK/AAB and iOS IPA builds effortlessly.",
   "main": "dist/index.js",
   "bin": {
