@@ -6,6 +6,9 @@
   "bin": {
     "buildshare": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/index.ts",
